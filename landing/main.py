@@ -23,55 +23,11 @@ BUCKET_NAME =  "webscrape-petrol-raw-data" # Make sure this matches your bucket 
 FILE_NAME = f"raw_data_{extract_timestamp}.txt"
 PROJECT_NAME = 'petrol-webscrape'
 
-#%% Part 3 - Extractor
-def cleaner(page):
-    #scale down the problem
-    html = str(page) 
-    begin = html.find('\\n<tr class="table-row" style="cursor: pointer;"')
-    end = html.find("</small></td>\\n</tr> </tbody>\\n", begin)
-    rawpagereduced = (html[begin:end])
-    #Split the string up into rows
-    df = rawpagereduced.split("/td>\\n</tr>")
-    #remove the tip 
-    for element in df:
-        if element.find("TIPS!") != -1:
-            df.remove(element)
-    return df
-
-def splitter(df):
-    #split the strings into columns
-    seperator = ";"
-    index = 0
-    for element in df:
-        element = element.replace('\\n<tr class="table-row" style="cursor: pointer;" data-href="', '')
-        element = element.replace('">\\n', seperator)
-        element = element.replace('</small></b><br />', seperator)
-        element = element.replace('\\n', seperator)
-        element = element.replace(';">', seperator)
-        element = element.replace('</b><br /><small>', seperator)
-        element = element.replace('</small><', '')
-        df[index] = element
-        index +=1
-    df = pd.DataFrame(df)
-    df.columns = ["Name"]
-    df = df["Name"].str.split(';', expand = True)
-    df.columns = ["Wadress", "Name", "Adress", "Colour", "Price", "Date Entered"]
-    df['Date Collected'] = date.today()
-    return df
-def misc(df):
-    #can remove the ugly parts, such as <small> and make the letters swedish (å ä ö)
-    df = df.replace(to_replace = ['<td>', '<b>', '<small>', '</td>', '<b style="color:'], value = '', regex = True)
-    df['Price'] = df['Price'].replace('kr', '', regex = True)
-    df = df.replace('\xc3\xa5','å', regex = True)
-    return df
-print("functions defined")
-
-
 def scrape_pages(extract_timestamp):
     #%% Run through all pages and get each price into a row
     html_list = ""
     last_iteration_failed = False
-    for iteration in range(1, 5):
+    for iteration in range(1, 25):
         try:
             delay = 20
             max_retries = 5
@@ -93,12 +49,12 @@ def scrape_pages(extract_timestamp):
                     print(f"Couldn't scrape page {iteration} after {_} tries. Last scrape delayed by {delay} seconds")
                     delay *= 2
         except ValueError:
-            break
-    html_list + "___data_scraped_at_"+ str(extract_timestamp) + "___"
+            print("limit reached")
+    html_list = html_list + "___data_scraped_at_"+ str(extract_timestamp) + "___"
     return html_list
 
-def fetch_data_to_bucket(FILE_NAME):
-    html_list = scrape_pages(extract_timestamp)
+def fetch_data_to_bucket(FILE_NAME, html_list):
+    #html_list = scrape_pages(extract_timestamp)
 
     # Upload raw data to GCS
     storage_client = storage.Client(project = PROJECT_NAME)
@@ -108,29 +64,14 @@ def fetch_data_to_bucket(FILE_NAME):
 
     print(f"Data saved to {FILE_NAME} in bucket {BUCKET_NAME}")
 
-def load_data_to_bq(FILE_NAME):
-    # Configuration
-    PROJECT_ID = "petrol-webscrape" # Replace with your project ID
-    DATASET_ID = "b_petrol_webscrape_raw" # TBD: ADD HERE???
-    TABLE_ID = "b_petrol_webscrape_raw" # TBD: ADD HERE???
-    BUCKET_NAME = "webscrape-petrol-raw-data"
-    # Replace with the actual filename from your bucket (e.g., train_data_20260705_211300.json)
-    #FILE_NAME = "train_data_20260722_115035.json" 
-    client = bigquery.Client(project = PROJECT_ID)
-
-    # Define the table reference
-    table_ref = client.dataset(DATASET_ID).table(TABLE_ID)
-
-    # CLEAN DATA HERE - TRANSFORM
-    #TBD: ADD HERE
-
 
 
 @functions_framework.http
 def run_pipeline(request):
     try:
-        fetch_data_to_bucket(FILE_NAME)
-        load_data_to_bq(FILE_NAME)
+        html_list = scrape_pages(extract_timestamp)
+        fetch_data_to_bucket(FILE_NAME, html_list)
+        #load_data_to_bq(FILE_NAME) # TBD: Move to staging folder
         # Must return an explicit HTTP response so the server knows it succeeded
         return "Pipeline executed successfully!", 200
     except Exception as e:
