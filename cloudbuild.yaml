@@ -12,3 +12,5 @@ steps:
       - '--entry-point=run_pipeline'
       - '--trigger-http'
       - '--no-allow-unauthenticated'
+options:
+  logging: CLOUD_LOGGING_ONLY
