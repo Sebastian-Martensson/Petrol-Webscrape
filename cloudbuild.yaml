@@ -1,0 +1,14 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - 'gcloud'
+      - 'functions'
+      - 'deploy'
+      - 'petrol-scraper-func'
+      - '--gen2'
+      - '--runtime=python311'
+      - '--region=europe-west1'
+      - '--source=.'
+      - '--entry-point=run_pipeline'
+      - '--trigger-http'
+      - '--no-allow-unauthenticated'

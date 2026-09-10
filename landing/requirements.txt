@@ -1,0 +1,7 @@
+urllib3 >= 2.7.0
+TIME-python >= 0.0.17
+functions-framework
+requests
+pandas
+google-cloud-storage
+google-cloud-bigquery
