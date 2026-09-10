@@ -8,7 +8,7 @@ steps:
       - '--gen2'
       - '--runtime=python311'
       - '--region=europe-west1'
-      - '--source=.'
+      - '--source=./landing'
       - '--entry-point=run_pipeline'
       - '--trigger-http'
       - '--no-allow-unauthenticated'
