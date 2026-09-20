@@ -26,31 +26,35 @@ PROJECT_NAME = 'petrol-webscrape'
 def scrape_pages(extract_timestamp):
     #%% Run through all pages and get each price into a row
     html_list = ""
-    last_iteration_failed = False
-    for iteration in range(1, 25):
-        try:
-            delay = 20
-            max_retries = 5
-            for _ in range(max_retries):
-                try:
-                    print(iteration)
-                    base = "https://bensinpriser.nu/stationer/95/alla/alla/"
-                    number = str(iteration)
-                    webpage = base + number
-                    req = Request(webpage, headers={'User-Agent': 'Mozilla/5.0'})
-                    page = urlopen(req).read()
-                    html = str(page) 
-                    html_list = html_list + "___page" + str(iteration) +"___" + html
+    max_retries = 5
 
-                    # Break out of the for loop once the page has been successfully scraped
-                    break
-                except:
-                    time.sleep(delay)
-                    print(f"Couldn't scrape page {iteration} after {_} tries. Last scrape delayed by {delay} seconds")
-                    delay *= 2
-        except ValueError:
-            print("limit reached")
-    html_list = html_list + "___data_scraped_at_"+ str(extract_timestamp) + "___"
+    for iteration in range(1, 25):
+        delay = 20
+        page_successful = False
+        
+        for retry_i in range(max_retries):
+            try:
+                print(f"Trying page {iteration} (Attempt {retry_i + 1}/{max_retries})")
+                base = "https://bensinpriser.nu/stationer/95/alla/alla/"
+                webpage = base + str(iteration)
+                
+                req = Request(webpage, headers={'User-Agent': 'Mozilla/5.0'})
+                page = urlopen(req).read()
+                html = str(page) 
+                html_list += f"___page{iteration}___" + html
+                
+                page_successful = True
+                break  # Exit retry loop on success
+                
+            except Exception:
+                time.sleep(delay)
+                print(f"Failed page {iteration} on attempt {retry_i + 1}. Waiting {delay}s...")
+                delay *= 2
+                
+        # If all retries failed for this page, stop the outer loop entirely
+        if not page_successful:
+            print(f"Page {iteration} failed all retries. Stopping scraper.")
+            break
     return html_list
 
 def fetch_data_to_bucket(FILE_NAME, html_list):
