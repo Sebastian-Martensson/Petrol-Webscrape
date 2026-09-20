@@ -71,7 +71,7 @@ def scrape_pages(extract_timestamp):
     #%% Run through all pages and get each price into a row
     html_list = ""
     last_iteration_failed = False
-    for iteration in range(1, 5):
+    for iteration in range(1, 25):
         try:
             delay = 20
             max_retries = 5
