@@ -49,7 +49,7 @@ def scrape_pages(extract_timestamp):
             except Exception:
                 time.sleep(delay)
                 print(f"Failed page {iteration} on attempt {retry_i + 1}. Waiting {delay}s...")
-                delay *= 2
+                delay = delay
                 
         # If all retries failed for this page, stop the outer loop entirely
         if not page_successful:
