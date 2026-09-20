@@ -28,4 +28,4 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --project=petrol-webscrape \
-            --timeout=600s
+            --timeout=1800s
