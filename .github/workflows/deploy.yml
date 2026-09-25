@@ -52,7 +52,7 @@ jobs:
                       "--runtime=python314",
                       "--region=europe-west1",
                       f"--source={dir_name}",
-                      "--entry-point=main",
+                      "--entry-point=run_pipeline",
                       "--trigger-http",
                       "--allow-unauthenticated",
                       "--project=petrol-webscrape",
