@@ -1,12 +1,23 @@
+<<<<<<< HEAD
 name: Deploy Petrol Scraper to GCP
+=======
+name: Auto-Deploy All Functions
+>>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
 
 on:
   push:
     branches:
+<<<<<<< HEAD
       - main  # Change to 'master' if that is your default branch name
 
 jobs:
   deploy:
+=======
+      - main
+
+jobs:
+  deploy-all:
+>>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code
@@ -17,6 +28,7 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+<<<<<<< HEAD
       - name: Deploy Cloud Function Gen 2
         run: |
           gcloud functions deploy petrol-scraper-func \
@@ -29,3 +41,43 @@ jobs:
             --allow-unauthenticated \
             --project=petrol-webscrape \
             --timeout=600s
+=======
+      - name: Automatically Discover and Deploy Functions
+        run: |
+          echo "Scanning repository for main.py files..."
+          
+          for file in $(find . -name "main.py" -not -path "*/.*" -not -path "./venv/*" -not -path "./.venv*/*"); do
+            dir=\((dirname "\)file")
+            dir=${dir#./}
+            
+            if [ -z "\(dir" ] || [ "\)dir" = "." ]; then
+              continue
+            fi
+            
+            echo "--------------------------------------------------"
+            echo "Found main.py in directory: '$dir'"
+            
+            if [ "$dir" == "landing" ]; then
+              FUNC_NAME="petrol-scraper-func"
+            else
+              FUNC_NAME="petrol-scraper-$dir"
+            fi
+            
+            echo "Deploying to GCP as: \(FUNC_NAME using source folder:\)dir"
+            
+            gcloud functions deploy "$FUNC_NAME" \
+              --gen2 \
+              --runtime=python314 \
+              --region=europe-west1 \
+              --source="$dir" \
+              --entry-point=main \
+              --trigger-http \
+              --allow-unauthenticated \
+              --project=petrol-webscrape \
+              --timeout=1800s
+              
+            echo "Successfully deployed $FUNC_NAME!"
+          done
+          echo "--------------------------------------------------"
+          echo "All functions processed successfully."
+>>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
