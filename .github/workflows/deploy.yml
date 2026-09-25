@@ -1,23 +1,12 @@
-<<<<<<< HEAD
-name: Deploy Petrol Scraper to GCP
-=======
 name: Auto-Deploy All Functions
->>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
 
 on:
   push:
     branches:
-<<<<<<< HEAD
-      - main  # Change to 'master' if that is your default branch name
-
-jobs:
-  deploy:
-=======
       - main
 
 jobs:
   deploy-all:
->>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code
@@ -28,56 +17,55 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-<<<<<<< HEAD
-      - name: Deploy Cloud Function Gen 2
+      - name: Discover and Deploy Functions via Python
         run: |
-          gcloud functions deploy petrol-scraper-func \
-            --gen2 \
-            --runtime=python314 \
-            --region=europe-west1 \
-            --source=. \
-            --entry-point=main \
-            --trigger-http \
-            --allow-unauthenticated \
-            --project=petrol-webscrape \
-            --timeout=600s
-=======
-      - name: Automatically Discover and Deploy Functions
-        run: |
-          echo "Scanning repository for main.py files..."
-          
-          for file in $(find . -name "main.py" -not -path "*/.*" -not -path "./venv/*" -not -path "./.venv*/*"); do
-            dir=\((dirname "\)file")
-            dir=${dir#./}
-            
-            if [ -z "\(dir" ] || [ "\)dir" = "." ]; then
-              continue
-            fi
-            
-            echo "--------------------------------------------------"
-            echo "Found main.py in directory: '$dir'"
-            
-            if [ "$dir" == "landing" ]; then
-              FUNC_NAME="petrol-scraper-func"
-            else
-              FUNC_NAME="petrol-scraper-$dir"
-            fi
-            
-            echo "Deploying to GCP as: \(FUNC_NAME using source folder:\)dir"
-            
-            gcloud functions deploy "$FUNC_NAME" \
-              --gen2 \
-              --runtime=python314 \
-              --region=europe-west1 \
-              --source="$dir" \
-              --entry-point=main \
-              --trigger-http \
-              --allow-unauthenticated \
-              --project=petrol-webscrape \
-              --timeout=1800s
+          python - <<'EOF'
+          import os
+          import subprocess
+
+          print("Scanning repository for main.py files...")
+          for root, dirs, files in os.walk("."):
+              # Skip hidden folders, git, and virtual environments (.venv, venv, etc.)
+              path_parts = root.split(os.sep)
+              if any(part.startswith('.') or 'venv' in part for part in path_parts):
+                  continue
               
-            echo "Successfully deployed $FUNC_NAME!"
-          done
-          echo "--------------------------------------------------"
-          echo "All functions processed successfully."
->>>>>>> 48fd3e16c976f481ea529d965f89ced69df31efa
+              if "main.py" in files:
+                  dir_name = root.lstrip("./").lstrip(os.sep)
+                  if not dir_name:
+                      continue
+                  
+                  print("--------------------------------------------------")
+                  print(f"Found main.py in directory: '{dir_name}'")
+                  
+                  # Map folder names to GCP function names
+                  if dir_name == "landing":
+                      func_name = "petrol-scraper-func"
+                  else:
+                      func_name = f"petrol-scraper-{dir_name}"
+                      
+                  print(f"Deploying to GCP as: {func_name} using source folder: {dir_name}")
+                  
+                  cmd = [
+                      "gcloud", "functions", "deploy", func_name,
+                      "--gen2",
+                      "--runtime=python314",
+                      "--region=europe-west1",
+                      f"--source={dir_name}",
+                      "--entry-point=main",
+                      "--trigger-http",
+                      "--allow-unauthenticated",
+                      "--project=petrol-webscrape",
+                      "--timeout=1800s"
+                  ]
+                  
+                  result = subprocess.run(cmd)
+                  if result.returncode != 0:
+                      print(f"Error: Deployment failed for {func_name}")
+                      exit(1)
+                  else:
+                      print(f"Successfully deployed {func_name}!")
+                      
+          print("--------------------------------------------------")
+          print("All functions processed successfully.")
+          EOF
