@@ -51,7 +51,7 @@ def fetch_data_to_bucket(file_name, html_list):
     print(f"Data saved to {file_name} in bucket {BUCKET_NAME}")
 
 @functions_framework.http
-def main(request):
+def run_pipeline(request):
     try:
         # Generate a unique timestamp and filename per execution
         extract_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
