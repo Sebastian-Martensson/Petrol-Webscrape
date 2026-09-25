@@ -21,22 +21,17 @@ jobs:
         run: |
           echo "Scanning repository for main.py files..."
           
-          # Find all main.py files, excluding hidden folders (.github, .git) and virtual environments
-          find . -name "main.py" -not -path "*/.*" -not -path "./venv/*" -not -path "./.venv*/*" | while read -r file; do
-            # Get the directory containing main.py (e.g., ./landing or ./staging)
+          for file in $(find . -name "main.py" -not -path "*/.*" -not -path "./venv/*" -not -path "./.venv*/*"); do
             dir=\((dirname "\)file")
-            # Strip the leading './'
             dir=${dir#./}
             
-            # If main.py is sitting directly at the root (optional: skip or handle)
-            if [ -z "$dir" ]; then
+            if [ -z "\(dir" ] || [ "\)dir" = "." ]; then
               continue
             fi
             
             echo "--------------------------------------------------"
             echo "Found main.py in directory: '$dir'"
             
-            # Name the GCP function based on the folder name
             if [ "$dir" == "landing" ]; then
               FUNC_NAME="petrol-scraper-func"
             else
