@@ -1,12 +1,12 @@
-name: Deploy Petrol Scraper to GCP
+name: Auto-Deploy All Functions
 
 on:
   push:
     branches:
-      - main  # Change to 'master' if that is your default branch name
+      - main
 
 jobs:
-  deploy:
+  deploy-all:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code
@@ -17,15 +17,46 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Deploy Cloud Function Gen 2
+      - name: Automatically Discover and Deploy Functions
         run: |
-          gcloud functions deploy petrol-scraper-func \
-            --gen2 \
-            --runtime=python314 \
-            --region=europe-west1 \
-            --source=. \
-            --entry-point=main \
-            --trigger-http \
-            --allow-unauthenticated \
-            --project=petrol-webscrape \
-            --timeout=1800s
+          echo "Scanning repository for main.py files..."
+          
+          # Find all main.py files, excluding hidden folders (.github, .git) and virtual environments
+          find . -name "main.py" -not -path "*/.*" -not -path "./venv/*" -not -path "./.venv*/*" | while read -r file; do
+            # Get the directory containing main.py (e.g., ./landing or ./staging)
+            dir=\((dirname "\)file")
+            # Strip the leading './'
+            dir=${dir#./}
+            
+            # If main.py is sitting directly at the root (optional: skip or handle)
+            if [ -z "$dir" ]; then
+              continue
+            fi
+            
+            echo "--------------------------------------------------"
+            echo "Found main.py in directory: '$dir'"
+            
+            # Name the GCP function based on the folder name
+            if [ "$dir" == "landing" ]; then
+              FUNC_NAME="petrol-scraper-func"
+            else
+              FUNC_NAME="petrol-scraper-$dir"
+            fi
+            
+            echo "Deploying to GCP as: \(FUNC_NAME using source folder:\)dir"
+            
+            gcloud functions deploy "$FUNC_NAME" \
+              --gen2 \
+              --runtime=python314 \
+              --region=europe-west1 \
+              --source="$dir" \
+              --entry-point=main \
+              --trigger-http \
+              --allow-unauthenticated \
+              --project=petrol-webscrape \
+              --timeout=1800s
+              
+            echo "Successfully deployed $FUNC_NAME!"
+          done
+          echo "--------------------------------------------------"
+          echo "All functions processed successfully."
