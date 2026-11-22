@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 # GCP
 from google.cloud import storage
@@ -10,37 +11,64 @@ BUCKET_NAME = "webscrape-petrol-raw-data"
 PROJECT_NAME = 'petrol-webscrape'
 
 def scrape_pages(extract_timestamp):
-    html_list = ""
-    max_retries = 5
+    base = "https://bensinpriser.nu/stationer/95/alla/alla/"
+    headers = {
+        "User-Agent": "Petrol-Webscrape/1.0 (personal project; contact: your@email.com)",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
+    }
+    max_pages = 25
+    max_retries = 3
+    pause_between_pages = 5
+    inital_delay = 10
 
-    for iteration in range(1, 25):
-        delay = 20
-        page_successful = False
-        
-        for retry_i in range(max_retries):
+    html_list = ""
+    blocked = False
+    reached_end = False
+
+    for page_no in range(1, max_pages + 1):
+        delay = inital_delay
+        page = None
+
+        for attempt in range(1, max_retries + 1):
             try:
-                print(f"Trying page {iteration} (Attempt {retry_i + 1}/{max_retries})")
-                base = "https://bensinpriser.nu/stationer/95/alla/alla/"
-                webpage = base + str(iteration)
-                
-                req = Request(webpage, headers={'User-Agent': 'Mozilla/5.0'})
-                page = urlopen(req).read()
-                html = str(page) 
-                html_list += f"___page{iteration}___" + html
-                
-                page_successful = True
-                break  # Exit retry loop on success
-                
-            except Exception as e:
+                print(f"Trying page {page_no} (attempt {attempt}/{max_retries})")
+                req = Request(base + str(page_no), headers=headers)
+                page = urlopen(req, timeout=30).read()
+                break                                   # success
+
+            except HTTPError as e:
+                if e.code == 403:
+                    print(f"403 Forbidden on page {page_no}. Blocked, stopping.")
+                    blocked = True
+                    break                               # no point retrying
+                if e.code == 404:
+                    print(f"Page {page_no} not found, assuming that was the last page.")
+                    reached_end = True
+                    break
+                print(f"HTTP {e.code} on page {page_no}")
+
+            except (URLError, TimeoutError) as e:
+                print(f"Network problem on page {page_no}: {e}")
+
+            if attempt < max_retries:                   # only reached when we should retry
+                print(f"Waiting {delay}s before retrying...")
                 time.sleep(delay)
-                print(f"Failed page {iteration} on attempt {retry_i + 1}. Waiting {delay}s...")
-                delay *= 2  # Fixed backoff bug
-                
-        # If all retries failed for this page, stop the outer loop entirely
-        if not page_successful:
-            print(f"Page {iteration} failed all retries. Stopping scraper.")
+                delay *= 2
+
+        if blocked or reached_end:
             break
-            
+        if page is None:
+            print(f"Page {page_no} failed all {max_retries} attempts. Stopping.")
+            break
+        if b'class="cp-row"' not in page:               # site may return 200 with an empty list
+            print(f"Page {page_no} has no stations, stopping.")
+            break
+
+        html_list += f"___page{page_no}___" + str(page)
+        time.sleep(pause_between_pages)
+
+    print(f"Scraped {html_list.count('___page')} pages. Blocked: {blocked}")
     return html_list
 
 def fetch_data_to_bucket(file_name, html_list):
@@ -64,3 +92,6 @@ def run_pipeline(request):
     except Exception as e:
         print(f"Pipeline error: {str(e)}")
         return f"Error: {str(e)}", 500
+if __name__ == "__main__":
+    # Local testing only. Cloud Functions ignores this block.
+    print(run_pipeline(None))
